@@ -26,6 +26,18 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// --- UTILS ---
+const createLog = async (userId: string | null, action: string, details: any = {}) => {
+    try {
+        await pool.query(
+            'INSERT INTO system_logs (user_id, action, details) VALUES ($1, $2, $3)',
+            [userId, action, JSON.stringify(details)]
+        );
+    } catch (error) {
+        console.error('Logging Error:', error);
+    }
+};
+
 // --- MULTER CONFIG ---
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
@@ -67,7 +79,11 @@ app.post('/api/auth/register', async (req, res) => {
             'INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3) RETURNING id, email, role',
             [email, hashedPassword, role || 'CANDIDATE']
         );
-        res.json(result.rows[0]);
+        const user = result.rows[0];
+
+        await createLog(user.id, 'USER_REGISTERED', { email: user.email, role: user.role });
+
+        res.json(user);
     } catch (error) {
         res.status(500).json({ error: 'Registration failed' });
     }
@@ -88,6 +104,8 @@ app.post('/api/auth/login', async (req, res) => {
             process.env.JWT_SECRET!,
             { expiresIn: '24h' }
         );
+        await createLog(user.id, 'USER_LOGIN', { email: user.email });
+
         res.json({ token, user: { id: user.id, email: user.email, role: user.role, tokens: user.tokens } });
     } catch (error) {
         res.status(500).json({ error: 'Login failed' });
@@ -126,6 +144,9 @@ app.post('/api/auth/forgot-password', async (req, res) => {
         if (!sent) {
             return res.status(500).json({ error: 'Failed to send reset email. Please try again later.' });
         }
+
+        await createLog(user.id, 'PASSWORD_RESET_REQUESTED', { email });
+
         res.json({ message: 'If that email is in our system, you will receive a reset link.' });
     } catch (error) {
         console.error('Forgot Password Error:', error);
@@ -425,9 +446,63 @@ app.put('/api/admin/users/:id/status', verifyJWT, roleGuard(['ADMIN']), async (r
     const { isBlocked } = req.body;
     try {
         await pool.query('UPDATE users SET is_blocked = $1 WHERE id = $2', [isBlocked, req.params.id]);
+
+        await createLog(req.user!.id, isBlocked ? 'BLOCK_USER' : 'UNBLOCK_USER', { targetUserId: req.params.id });
+
         res.json({ message: 'User status updated' });
     } catch (error) {
         res.status(500).json({ error: 'Update failed' });
+    }
+});
+
+app.get('/api/admin/users/:id/logs', verifyJWT, roleGuard(['ADMIN']), async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM system_logs WHERE user_id = $1 ORDER BY created_at DESC LIMIT 50',
+            [req.params.id]
+        );
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch logs' });
+    }
+});
+
+app.get('/api/admin/users/:id/transactions', verifyJWT, roleGuard(['ADMIN']), async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT * FROM transactions WHERE user_id = $1 ORDER BY created_at DESC',
+            [req.params.id]
+        );
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch transactions' });
+    }
+});
+
+app.post('/api/admin/users/:id/messages', verifyJWT, roleGuard(['ADMIN']), async (req, res) => {
+    const { subject, content } = req.body;
+    try {
+        // 1. Get user email
+        const userRes = await pool.query('SELECT email FROM users WHERE id = $1', [req.params.id]);
+        if (userRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+        const userEmail = userRes.rows[0].email;
+
+        // 2. Save message to DB
+        await pool.query(
+            'INSERT INTO admin_messages (sender_id, receiver_id, subject, content) VALUES ($1, $2, $3, $4)',
+            [req.user!.id, req.params.id, subject, content]
+        );
+
+        // 3. Send Email
+        await emailService.sendAdminMessage(userEmail, subject, content);
+
+        // 4. Log action
+        await createLog(req.user!.id, 'SEND_ADMIN_MESSAGE', { targetUserId: req.params.id, subject });
+
+        res.json({ message: 'Message sent successfully' });
+    } catch (error) {
+        console.error('Send Message Error:', error);
+        res.status(500).json({ error: 'Failed to send message' });
     }
 });
 

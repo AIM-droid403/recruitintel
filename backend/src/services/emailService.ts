@@ -60,3 +60,30 @@ export const notifyEmployerLowBalance = async (employerEmail: string, balance: n
         html: htmlTemplate,
     });
 };
+
+/**
+ * Sends a direct message from the admin to a user.
+ */
+export const sendAdminMessage = async (to: string, subject: string, content: string) => {
+    const htmlTemplate = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+            <div style="margin-bottom: 24px;">
+                <span style="background: linear-gradient(to right, #3b82f6, #8b5cf6); -webkit-background-clip: text; color: transparent; font-size: 24px; font-weight: 900; letter-spacing: -0.05em;">RecruitIntel Admin</span>
+            </div>
+            <h1 style="color: #0f172a; font-size: 20px; font-weight: 800; margin-bottom: 16px;">${subject || 'System Notification'}</h1>
+            <div style="color: #1e293b; font-size: 15px; line-height: 1.6; margin-bottom: 24px; background-color: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                ${content.replace(/\n/g, '<br/>')}
+            </div>
+            <p style="color: #64748b; font-size: 13px; line-height: 1.6;">If you have any questions regarding this message, please respond via your dashboard support channel.</p>
+            <div style="border-top: 1px solid #f1f5f9; padding-top: 24px; margin-top: 32px;">
+                <p style="color: #cbd5e1; font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">RecruitIntel Governance Division</p>
+            </div>
+        </div>
+    `;
+
+    return await sendEmail({
+        to,
+        subject: `[RecruitIntel] ${subject}`,
+        html: htmlTemplate,
+    });
+};

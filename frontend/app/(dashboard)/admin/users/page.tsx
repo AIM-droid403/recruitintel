@@ -1,13 +1,25 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Users, ShieldCheck, ShieldAlert, Search, Filter, Ban, CheckCircle2, MoreVertical } from 'lucide-react';
+import { Users, ShieldCheck, ShieldAlert, Search, Filter, Ban, CheckCircle2, MoreVertical, History, CreditCard, MessageSquare } from 'lucide-react';
+import { LogsModal, TransactionsModal, MessageModal } from './Modals';
 
 export default function UserManagementPage() {
     const { token } = useAuth();
     const [users, setUsers] = useState<any[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+
+    // Modal & Menu State
+    const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [activeMenu, setActiveMenu] = useState<string | null>(null);
+    const [modalState, setModalState] = useState({
+        logs: false,
+        billings: false,
+        message: false
+    });
+
+    const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const fetchUsers = async () => {
@@ -27,6 +39,15 @@ export default function UserManagementPage() {
             }
         };
         fetchUsers();
+
+        // Close menu on click outside
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setActiveMenu(null);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [token]);
 
     const handleToggleBlock = async (userId: string, currentStatus: boolean) => {
@@ -43,6 +64,7 @@ export default function UserManagementPage() {
 
             if (response.ok) {
                 setUsers(users.map(u => u.id === userId ? { ...u, is_blocked: !currentStatus } : u));
+                setActiveMenu(null);
             }
         } catch (err) {
             console.error(err);
@@ -53,6 +75,12 @@ export default function UserManagementPage() {
         u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
         u.role.toLowerCase().includes(searchQuery.toLowerCase())
     );
+
+    const openModal = (user: any, type: 'logs' | 'billings' | 'message') => {
+        setSelectedUser(user);
+        setModalState({ ...modalState, [type]: true });
+        setActiveMenu(null);
+    };
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -83,7 +111,7 @@ export default function UserManagementPage() {
                 </div>
             </div>
 
-            <div className="glass technical-border rounded-2xl overflow-hidden shadow-2xl shadow-black/50">
+            <div className="glass technical-border rounded-2xl overflow-visible shadow-2xl shadow-black/50">
                 <table className="w-full text-left border-collapse">
                     <thead className="bg-card/50 border-b border-border">
                         <tr>
@@ -108,7 +136,7 @@ export default function UserManagementPage() {
                                 </td>
                                 <td className="px-6 py-4">
                                     <span className={`text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter ${user.role === 'ADMIN' ? 'bg-red-500/10 text-red-500' :
-                                            user.role === 'EMPLOYER' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent'
+                                        user.role === 'EMPLOYER' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent'
                                         }`}>
                                         {user.role}
                                     </span>
@@ -128,21 +156,50 @@ export default function UserManagementPage() {
                                         )}
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 text-right">
+                                <td className="px-6 py-4 text-right relative overflow-visible">
                                     <div className="flex items-center justify-end space-x-2">
-                                        <button
-                                            onClick={() => handleToggleBlock(user.id, user.is_blocked)}
-                                            className={`p-2 rounded-lg transition-all ${user.is_blocked
-                                                    ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20'
-                                                    : 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
-                                                }`}
-                                            title={user.is_blocked ? "Unblock Account" : "Block Account"}
-                                        >
-                                            {user.is_blocked ? <ShieldCheck className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
-                                        </button>
-                                        <button className="p-2 bg-secondary/50 rounded-lg hover:bg-white/5 transition-all text-foreground/40">
-                                            <MoreVertical className="w-4 h-4" />
-                                        </button>
+                                        <div className="relative" ref={activeMenu === user.id ? menuRef : null}>
+                                            <button
+                                                onClick={() => setActiveMenu(activeMenu === user.id ? null : user.id)}
+                                                className={`p-2 rounded-lg transition-all ${activeMenu === user.id ? 'bg-white/10 text-foreground' : 'bg-secondary/50 text-foreground/40 hover:bg-white/5'}`}
+                                            >
+                                                <MoreVertical className="w-4 h-4" />
+                                            </button>
+
+                                            {activeMenu === user.id && (
+                                                <div className="absolute right-0 mt-2 w-56 glass technical-border rounded-xl shadow-2xl z-[100] py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                    <div className="px-3 py-2 border-b border-white/5 mb-1">
+                                                        <span className="text-[10px] font-mono font-bold text-foreground/30 uppercase">Governance Actions</span>
+                                                    </div>
+
+                                                    <button onClick={() => openModal(user, 'logs')} className="w-full flex items-center space-x-3 px-4 py-2.5 text-xs font-bold hover:bg-white/5 transition-colors text-foreground/60 hover:text-primary">
+                                                        <History className="w-4 h-4" />
+                                                        <span>VIEW LOGS</span>
+                                                    </button>
+
+                                                    <button onClick={() => openModal(user, 'billings')} className="w-full flex items-center space-x-3 px-4 py-2.5 text-xs font-bold hover:bg-white/5 transition-colors text-foreground/60 hover:text-accent">
+                                                        <CreditCard className="w-4 h-4" />
+                                                        <span>VIEW BILLINGS</span>
+                                                    </button>
+
+                                                    <button onClick={() => openModal(user, 'message')} className="w-full flex items-center space-x-3 px-4 py-2.5 text-xs font-bold hover:bg-white/5 transition-colors text-foreground/60 hover:text-blue-500">
+                                                        <MessageSquare className="w-4 h-4" />
+                                                        <span>SEND MESSAGE</span>
+                                                    </button>
+
+                                                    <div className="my-1 border-t border-white/5"></div>
+
+                                                    <button
+                                                        onClick={() => handleToggleBlock(user.id, user.is_blocked)}
+                                                        className={`w-full flex items-center space-x-3 px-4 py-2.5 text-xs font-bold transition-colors ${user.is_blocked ? 'text-green-500 hover:bg-green-500/10' : 'text-red-500 hover:bg-red-500/10'
+                                                            }`}
+                                                    >
+                                                        {user.is_blocked ? <ShieldCheck className="w-4 h-4" /> : <Ban className="w-4 h-4" />}
+                                                        <span>{user.is_blocked ? 'UNBLOCK ACCOUNT' : 'BLOCK ACCOUNT'}</span>
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </td>
                             </tr>
@@ -150,6 +207,26 @@ export default function UserManagementPage() {
                     </tbody>
                 </table>
             </div>
+
+            {/* Modals */}
+            <LogsModal
+                isOpen={modalState.logs}
+                onClose={() => setModalState({ ...modalState, logs: false })}
+                user={selectedUser}
+                token={token}
+            />
+            <TransactionsModal
+                isOpen={modalState.billings}
+                onClose={() => setModalState({ ...modalState, billings: false })}
+                user={selectedUser}
+                token={token}
+            />
+            <MessageModal
+                isOpen={modalState.message}
+                onClose={() => setModalState({ ...modalState, message: false })}
+                user={selectedUser}
+                token={token}
+            />
         </div>
     );
 }

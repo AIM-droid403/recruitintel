@@ -85,8 +85,28 @@ CREATE TABLE IF NOT EXISTS system_settings (
 INSERT INTO system_settings (key, value) VALUES ('maintenance_mode', 'false') ON CONFLICT DO NOTHING;
 
 -- System Logs & Audit
+CREATE TABLE IF NOT EXISTS system_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    action TEXT NOT NULL,
+    details JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Admin Messages
+CREATE TABLE IF NOT EXISTS admin_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    subject TEXT,
+    content TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_candidate_embedding ON candidate_profiles USING ivfflat (embedding vector_cosine_ops);
 CREATE INDEX IF NOT EXISTS idx_job_embedding ON job_vacancies USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_system_logs_user_id ON system_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_admin_messages_receiver_id ON admin_messages(receiver_id);
