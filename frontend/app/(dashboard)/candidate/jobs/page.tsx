@@ -30,6 +30,25 @@ export default function CandidateJobsPage() {
         if (token) fetchJobs();
     }, [token]);
 
+    const handleApply = async (jobId: string) => {
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+            const response = await fetch(`${apiUrl}/api/jobs/${jobId}/apply`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                alert("Application Sent! Your neural profile has been transmitted to the employer.");
+            } else {
+                const data = await response.json();
+                alert(data.message || "Application failed. Please try again.");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Connection error. The magic failed.");
+        }
+    };
+
     return (
         <div className="max-w-6xl mx-auto space-y-10 pb-20">
             {/* Header & Search */}
@@ -118,7 +137,10 @@ export default function CandidateJobsPage() {
                             </div>
 
                             <div className="md:w-64 flex flex-col justify-center space-y-3">
-                                <button className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 flex items-center justify-center group/btn">
+                                <button
+                                    onClick={() => handleApply(job.id)}
+                                    className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 flex items-center justify-center group/btn"
+                                >
                                     Magic Apply <Zap className="ml-2 w-4 h-4 text-yellow-500 fill-yellow-500 group-hover/btn:scale-125 transition-transform" />
                                 </button>
                                 <button className="w-full py-4 bg-white border border-slate-200 text-slate-900 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all flex items-center justify-center">

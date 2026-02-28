@@ -6,6 +6,7 @@ interface User {
     email: string;
     role: 'ADMIN' | 'EMPLOYER' | 'CANDIDATE';
     tokens: number;
+    profile_picture_url?: string;
 }
 
 interface AuthContextType {
@@ -14,6 +15,7 @@ interface AuthContextType {
     login: (token: string, user: User) => void;
     logout: () => void;
     updateTokens: (tokens: number) => void;
+    updateUser: (data: Partial<User>) => void;
     isLoading: boolean;
 }
 
@@ -56,8 +58,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     };
 
+    const updateUser = (data: Partial<User>) => {
+        if (user) {
+            const updated = { ...user, ...data };
+            setUser(updated);
+            localStorage.setItem('ri_user', JSON.stringify(updated));
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, updateTokens, isLoading }}>
+        <AuthContext.Provider value={{ user, token, login, logout, updateTokens, updateUser, isLoading }}>
             {children}
         </AuthContext.Provider>
     );

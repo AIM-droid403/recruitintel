@@ -24,6 +24,7 @@ const pool = new Pool({
 
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // --- MULTER CONFIG ---
 const storage = multer.diskStorage({
@@ -38,6 +39,24 @@ const storage = multer.diskStorage({
     }
 });
 const upload = multer({ storage });
+
+const checkMaintenance = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    try {
+        const result = await pool.query("SELECT value FROM system_settings WHERE key = 'maintenance_mode'");
+        const isMaintenance = result.rows[0]?.value === true;
+
+        // Admins can bypass maintenance
+        if (isMaintenance && (req as any).user?.role !== 'ADMIN') {
+            return res.status(503).json({
+                error: 'System Lockdown',
+                message: 'The system is currently undergoing emergency maintenance. Please try again later.'
+            });
+        }
+        next();
+    } catch (error) {
+        next(); // Proceed if settings can't be fetched
+    }
+};
 
 // --- AUTH ROUTES ---
 app.post('/api/auth/register', async (req, res) => {
@@ -129,6 +148,47 @@ app.post('/api/auth/reset-password', async (req, res) => {
     }
 });
 
+// --- USER PROFILE & SECURITY ---
+app.put('/api/users/change-password', verifyJWT, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    try {
+        const userRes = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.user!.id]);
+        const user = userRes.rows[0];
+
+        const isValid = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!isValid) return res.status(401).json({ error: 'Invalid current password' });
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hashedPassword, req.user!.id]);
+
+        res.json({ message: 'Password updated successfully' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update password' });
+    }
+});
+
+app.put('/api/users/profile', verifyJWT, upload.single('profilePicture'), async (req, res) => {
+    try {
+        let profilePictureUrl = req.body.profilePictureUrl;
+
+        if (req.file) {
+            profilePictureUrl = `/uploads/${req.file.filename}`;
+        }
+
+        if (profilePictureUrl) {
+            await pool.query('UPDATE users SET profile_picture_url = $1 WHERE id = $2', [profilePictureUrl, req.user!.id]);
+        }
+
+        res.json({
+            message: 'Profile updated successfully',
+            profile_picture_url: profilePictureUrl
+        });
+    } catch (error) {
+        console.error('Profile Update Error:', error);
+        res.status(500).json({ error: 'Failed to update profile' });
+    }
+});
+
 app.get('/api/jobs/matches', verifyJWT, async (req, res) => {
     try {
         // 1. Get Candidate Embedding
@@ -180,7 +240,46 @@ app.get('/api/jobs/employer', verifyJWT, roleGuard(['EMPLOYER', 'ADMIN']), async
 });
 
 // --- JOB ROUTES ---
-app.post('/api/jobs', verifyJWT, roleGuard(['EMPLOYER', 'ADMIN']), enforceTokenomics(10), async (req, res) => {
+app.get('/api/jobs', verifyJWT, checkMaintenance, async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM job_vacancies ORDER BY created_at DESC');
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch jobs' });
+    }
+});
+
+app.post('/api/jobs/:id/apply', verifyJWT, checkMaintenance, roleGuard(['CANDIDATE']), async (req, res) => {
+    const jobId = req.params.id;
+    const candidateId = req.user!.id;
+    try {
+        await pool.query(
+            'INSERT INTO job_applications (job_id, candidate_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [jobId, candidateId]
+        );
+        res.json({ message: 'Application submitted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: 'Application failed' });
+    }
+});
+
+app.get('/api/employer/applicants', verifyJWT, checkMaintenance, roleGuard(['EMPLOYER']), async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT a.*, j.title as job_title, u.email as candidate_email, u.profile_picture_url
+            FROM job_applications a
+            JOIN job_vacancies j ON a.job_id = j.id
+            JOIN users u ON a.candidate_id = u.id
+            WHERE j.employer_id = $1
+            ORDER BY a.created_at DESC
+        `, [req.user!.id]);
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch applicants' });
+    }
+});
+
+app.post('/api/jobs', verifyJWT, checkMaintenance, roleGuard(['EMPLOYER', 'ADMIN']), enforceTokenomics(10), async (req, res) => {
     const { title, description, personaDescription } = req.body;
     try {
         const embedding = await gemini.generateEmbedding(`${title} ${description} ${personaDescription}`);
@@ -284,15 +383,51 @@ app.post('/api/documents/upload', verifyJWT, upload.single('file'), async (req, 
 app.get('/api/admin/analytics', verifyJWT, roleGuard(['ADMIN']), async (req, res) => {
     try {
         const jobsCount = await pool.query('SELECT COUNT(*) FROM job_vacancies');
-        const revenue = await pool.query('SELECT SUM(amount) FROM transactions WHERE status = "SUCCESS"');
+        const revenue = await pool.query("SELECT SUM(amount) FROM transactions WHERE status = 'SUCCESS'");
         const usersCount = await pool.query('SELECT COUNT(*) FROM users');
+        const maintenance = await pool.query("SELECT value FROM system_settings WHERE key = 'maintenance_mode'");
+
         res.json({
-            totalJobs: jobsCount.rows[0].count,
-            totalRevenue: revenue.rows[0].sum || 0,
-            totalUsers: usersCount.rows[0].count
+            totalJobs: parseInt(jobsCount.rows[0].count),
+            totalRevenue: parseFloat(revenue.rows[0].sum || 0),
+            totalUsers: parseInt(usersCount.rows[0].count),
+            isMaintenance: maintenance.rows[0]?.value || false
         });
     } catch (error) {
+        console.error('Analytics Error:', error);
         res.status(500).json({ error: 'Failed to fetch analytics' });
+    }
+});
+
+app.post('/api/admin/system/lockdown', verifyJWT, roleGuard(['ADMIN']), async (req, res) => {
+    const { lockdown } = req.body;
+    try {
+        await pool.query(
+            "UPDATE system_settings SET value = $1 WHERE key = 'maintenance_mode'",
+            [lockdown]
+        );
+        res.json({ message: lockdown ? 'System locked down' : 'System restored' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to toggle lockdown' });
+    }
+});
+
+app.get('/api/admin/users', verifyJWT, roleGuard(['ADMIN']), async (req, res) => {
+    try {
+        const result = await pool.query('SELECT id, email, role, tokens, is_blocked, created_at FROM users ORDER BY created_at DESC');
+        res.json(result.rows);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to fetch users' });
+    }
+});
+
+app.put('/api/admin/users/:id/status', verifyJWT, roleGuard(['ADMIN']), async (req, res) => {
+    const { isBlocked } = req.body;
+    try {
+        await pool.query('UPDATE users SET is_blocked = $1 WHERE id = $2', [isBlocked, req.params.id]);
+        res.json({ message: 'User status updated' });
+    } catch (error) {
+        res.status(500).json({ error: 'Update failed' });
     }
 });
 

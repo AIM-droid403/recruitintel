@@ -1,4 +1,4 @@
-import React from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { Bell, ShieldCheck, Activity } from 'lucide-react';
 
@@ -19,19 +19,21 @@ const Header = () => {
             </div>
 
             <div className="flex items-center space-x-6">
-                {user && (
+                {(user && user.role !== 'CANDIDATE') && (
                     <div className="bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 flex items-center space-x-2">
                         <span className="text-xs font-bold text-primary">TOKENS:</span>
                         <span className="text-sm font-mono text-foreground">{user.tokens}</span>
                     </div>
                 )}
-                <button className="relative p-2 text-foreground/60 hover:text-foreground">
+                <Link href="/notifications" className="relative p-2 text-foreground/60 hover:text-foreground">
                     <Bell className="w-5 h-5" />
                     <span className="absolute top-2 right-2 w-2 h-2 bg-accent rounded-full border-2 border-card"></span>
-                </button>
-                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-accent flex items-center justify-center text-sm font-bold border border-white/10">
-                    {user?.email[0].toUpperCase()}
-                </div>
+                </Link>
+                <Link href="/settings" className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-accent flex items-center justify-center text-sm font-bold border border-white/10 hover:opacity-80 transition-opacity bg-cover bg-center"
+                    style={user?.profile_picture_url ? { backgroundImage: `url(${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001'}${user.profile_picture_url})` } : {}}
+                >
+                    {!user?.profile_picture_url && user?.email[0].toUpperCase()}
+                </Link>
             </div>
         </header>
     );

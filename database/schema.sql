@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
     mfa_enabled BOOLEAN DEFAULT FALSE,
     tokens INTEGER DEFAULT 100,
     is_blocked BOOLEAN DEFAULT FALSE,
+    profile_picture_url TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -62,14 +63,28 @@ CREATE TABLE IF NOT EXISTS transactions (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- System Logs & Audit
-CREATE TABLE IF NOT EXISTS system_logs (
+-- Job Applications
+CREATE TABLE IF NOT EXISTS job_applications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES users(id),
-    action TEXT NOT NULL,
-    payload JSONB, -- Stores encrypted or masked data
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    job_id UUID REFERENCES job_vacancies(id) ON DELETE CASCADE,
+    candidate_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    status TEXT DEFAULT 'PENDING', -- PENDING, REVIEWED, REJECTED, ACCEPTED
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(job_id, candidate_id)
 );
+
+-- System Settings (for Kill Switch / Maintenance)
+CREATE TABLE IF NOT EXISTS system_settings (
+    key TEXT PRIMARY KEY,
+    value JSONB,
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Insert default maintenance mode
+INSERT INTO system_settings (key, value) VALUES ('maintenance_mode', 'false') ON CONFLICT DO NOTHING;
+
+-- System Logs & Audit
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);

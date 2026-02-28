@@ -15,8 +15,10 @@ export default function AdminDashboard() {
                 const response = await fetch(`${apiUrl}/api/admin/analytics`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                const data = await response.json();
-                setStats(data);
+                if (response.ok) {
+                    const data = await response.json();
+                    setStats(data);
+                }
             } catch (err) {
                 console.error(err);
             } finally {
@@ -26,8 +28,37 @@ export default function AdminDashboard() {
         fetchStats();
     }, [token]);
 
+    const handleToggleLockdown = async () => {
+        const isCurrentlyLocked = (stats as any).isMaintenance;
+        const confirmMsg = isCurrentlyLocked
+            ? "Are you sure you want to RESTORE the system? This will re-enable access for all users."
+            : "WARNING: You are about to LOCK DOWN the entire system. Only Admins will be able to access the platform. Continue?";
+
+        if (!confirm(confirmMsg)) return;
+
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
+            const response = await fetch(`${apiUrl}/api/admin/system/lockdown`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ lockdown: !isCurrentlyLocked })
+            });
+
+            if (response.ok) {
+                setStats({ ...stats, isMaintenance: !isCurrentlyLocked } as any);
+                alert(isCurrentlyLocked ? "System Restored" : "System Locked Down");
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Failed to toggle lockdown");
+        }
+    };
+
     const indicators = [
-        { label: 'Total Revenue', value: `$${stats.totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-green-500' },
+        { label: 'Total Revenue', value: `$${(stats?.totalRevenue || 0).toLocaleString()}`, icon: DollarSign, color: 'text-green-500' },
         { label: 'Recruitments', value: stats.totalJobs, icon: TrendingUp, color: 'text-primary' },
         { label: 'Network Size', value: stats.totalUsers, icon: Users, color: 'text-accent' },
     ];
@@ -39,10 +70,24 @@ export default function AdminDashboard() {
                     <h1 className="text-3xl font-bold tracking-tight">System Authority</h1>
                     <p className="text-foreground/40 mt-1">Enterprise governance and infrastructure monitoring.</p>
                 </div>
-                <button className="flex items-center space-x-2 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm font-bold hover:bg-red-500/20 transition-all">
-                    <ShieldAlert className="w-4 h-4" />
-                    <span>EMERGENCY KILL SWITCH</span>
-                </button>
+                <div className="flex items-center space-x-4">
+                    {(stats as any).isMaintenance && (
+                        <div className="flex items-center space-x-2 px-3 py-1.5 bg-red-500/20 text-red-500 rounded-lg text-xs font-bold animate-pulse">
+                            <ShieldAlert className="w-4 h-4" />
+                            <span>SYSTEM LOCKED</span>
+                        </div>
+                    )}
+                    <button
+                        onClick={handleToggleLockdown}
+                        className={`flex items-center space-x-2 px-4 py-2 border rounded-xl text-sm font-bold transition-all ${(stats as any).isMaintenance
+                                ? 'bg-green-500/10 border-green-500/20 text-green-500 hover:bg-green-500/20'
+                                : 'bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20'
+                            }`}
+                    >
+                        <ShieldAlert className="w-4 h-4" />
+                        <span>{(stats as any).isMaintenance ? 'RESTORE SYSTEM' : 'EMERGENCY KILL SWITCH'}</span>
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
