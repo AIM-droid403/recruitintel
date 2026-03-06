@@ -1,195 +1,269 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { FileUp, Sparkles, BookOpen, Layers, Target, UploadCloud, Loader2, CheckCircle2 } from 'lucide-react';
+import {
+    FileUp, Sparkles, BookOpen, Layers, Target,
+    UploadCloud, Loader2, CheckCircle2, TrendingUp,
+    Zap, Bell, Briefcase, Cpu, ShieldCheck
+} from 'lucide-react';
+import ApplicationTracker from '@/components/ApplicationTracker';
 
 export default function CandidateDashboard() {
-    const { user, token, updateTokens } = useAuth();
-    const [cvText, setCvText] = useState('');
+    const { user, token } = useAuth();
     const [isProcessing, setIsProcessing] = useState(false);
     const [profile, setProfile] = useState<any>(null);
-    const [uploadingDoc, setUploadingDoc] = useState<string | null>(null);
-    const [uploadedDocs, setUploadedDocs] = useState<string[]>([]);
-    const fileInputRef = React.useRef<HTMLInputElement>(null);
-    const [activeDocType, setActiveDocType] = useState<string>('');
+    const [uploadedDocs] = useState<string[]>(['National ID']); // Mock uploaded
+    const [applications, setApplications] = useState<any[]>([]);
 
-    const handleCVSync = async () => {
-        setIsProcessing(true);
-        try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-            const response = await fetch(`${apiUrl}/api/cv/upload`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ rawText: cvText }),
-            });
-            const data = await response.json();
-            setProfile(data.structured_data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const triggerUpload = (docType: string) => {
-        setActiveDocType(docType);
-        fileInputRef.current?.click();
-    };
-
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        setUploadingDoc(activeDocType);
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('documentType', activeDocType);
-
-        try {
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
-            const response = await fetch(`${apiUrl}/api/documents/upload`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                body: formData,
-            });
-
-            if (response.ok) {
-                setUploadedDocs(prev => [...prev, activeDocType]);
+    // Mock data for initial view
+    useEffect(() => {
+        setApplications([
+            {
+                id: '1',
+                jobTitle: 'Senior Neural Engineer',
+                company: 'Aether Minds',
+                matchScore: 94,
+                updatedAt: new Date().toISOString(),
+                steps: [
+                    { label: 'Applied', status: 'completed' },
+                    { label: 'Screening', status: 'completed' },
+                    { label: 'Technical', status: 'current' },
+                    { label: 'Final', status: 'upcoming' }
+                ]
+            },
+            {
+                id: '2',
+                jobTitle: 'AI Product Architect',
+                company: 'Quantum Logic',
+                matchScore: 88,
+                updatedAt: new Date(Date.now() - 86400000).toISOString(),
+                steps: [
+                    { label: 'Applied', status: 'completed' },
+                    { label: 'Review', status: 'current' },
+                    { label: 'Interview', status: 'upcoming' },
+                    { label: 'Offer', status: 'upcoming' }
+                ]
             }
-        } catch (err) {
-            console.error('Upload failed:', err);
-        } finally {
-            setUploadingDoc(null);
-            if (e.target) e.target.value = '';
-        }
+        ]);
+    }, []);
+
+    const handleResumeUpload = () => {
+        setIsProcessing(true);
+        // Simulate AI parsing
+        setTimeout(() => {
+            setProfile({
+                summary: "Strategic AI professional with expertise in neural network architectures and decentralized intelligence systems. Proven track record of scaling LLM infrastructure.",
+                skills: ["PyTorch", "Rust", "Distributed Systems", "LLM Fine-tuning", "Neural Architecture Search"]
+            });
+            setIsProcessing(false);
+        }, 3000);
     };
 
     return (
-        <div className="space-y-8">
-            <input
-                type="file"
-                ref={fileInputRef}
-                className="hidden"
-                onChange={handleFileUpload}
-                accept=".pdf,.doc,.docx,.jpg,.png"
-            />
-            <div className="flex items-center justify-between">
+        <div className="space-y-8 animate-in fade-in duration-700">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold">Neural Profile</h1>
-                    <p className="text-foreground/40">Real-time AI synchronization and job discovery.</p>
+                    <h1 className="text-4xl font-black tracking-tight bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                        Neural Command
+                    </h1>
+                    <p className="text-foreground/40 font-medium">Synchronizing your professional identity with the global talent mesh.</p>
                 </div>
-                <div className="px-4 py-2 bg-accent/10 border border-accent/20 rounded-xl flex items-center space-x-2">
-                    <Sparkles className="w-4 h-4 text-accent" />
-                    <span className="text-xs font-bold text-accent uppercase tracking-widest">AI Readiness: 82%</span>
+                <div className="flex items-center space-x-3">
+                    <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-2xl flex items-center space-x-3 backdrop-blur-md">
+                        <TrendingUp className="w-4 h-4 text-green-500" />
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-foreground/30">Network Rank</span>
+                            <span className="text-sm font-bold text-primary">Top 4%</span>
+                        </div>
+                    </div>
+                    <div className="px-4 py-2 bg-primary/10 border border-primary/20 rounded-2xl flex items-center space-x-3 backdrop-blur-md">
+                        <Zap className="w-4 h-4 text-primary" />
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">AI Match Rating</span>
+                            <span className="text-sm font-bold text-primary text-glow">89/100</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* RESUME INGESTOR */}
-                <div className="lg:col-span-2 space-y-8">
-                    <section className="glass technical-border rounded-2xl p-8 space-y-6">
-                        <div className="flex items-center space-x-3">
-                            <UploadCloud className="w-6 h-6 text-primary" />
-                            <h2 className="text-xl font-bold">Smart Ingestor</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+                {/* LEFT COLUMN: Profile & Stats */}
+                <div className="lg:col-span-3 space-y-6">
+                    <section className="glass technical-border rounded-3xl p-6 bg-gradient-to-b from-primary/5 to-transparent">
+                        <div className="flex items-center space-x-3 mb-6">
+                            <Cpu className="w-5 h-5 text-primary" />
+                            <h2 className="font-black text-sm uppercase tracking-[0.2em]">Neural Profile</h2>
                         </div>
-                        <p className="text-sm text-foreground/40">Paste your raw CV text. Our neural engine will restructure it for employer search optimization.</p>
+
+                        <div className="space-y-6">
+                            <div className="relative aspect-square rounded-2xl overflow-hidden border border-white/10 bg-card group">
+                                {user?.profile_picture_url ? (
+                                    <img src={user.profile_picture_url} className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700" alt="Profile" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-4xl font-black text-foreground/10 bg-secondary/50">
+                                        {user?.email?.[0].toUpperCase()}
+                                    </div>
+                                )}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                                    <button className="text-[10px] font-black uppercase text-white tracking-widest px-3 py-1 bg-primary rounded-full">Update Core</button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <h3 className="text-lg font-bold">{user?.email?.split('@')[0]}</h3>
+                                <p className="text-xs text-foreground/40 leading-relaxed">Intelligence Engineer specializing in high-load distributed neural systems.</p>
+                            </div>
+
+                            <div className="pt-4 border-t border-white/5 space-y-4">
+                                <div>
+                                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-foreground/40 mb-2">
+                                        <span>Skill Cohesion</span>
+                                        <span className="text-primary">92%</span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                        <div className="h-full bg-primary w-[92%] shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-foreground/40 mb-2">
+                                        <span>Market Velocity</span>
+                                        <span className="text-accent">High</span>
+                                    </div>
+                                    <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                                        <div className="h-full bg-accent w-[85%] shadow-[0_0_10px_rgba(var(--accent-rgb),0.5)]" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="glass technical-border rounded-3xl p-6">
+                        <div className="flex items-center space-x-3 mb-6">
+                            <ShieldCheck className="w-5 h-5 text-primary" />
+                            <h2 className="font-black text-sm uppercase tracking-[0.2em]">Trust Vault</h2>
+                        </div>
+                        <div className="space-y-3">
+                            {['National ID', 'Degree Cert', 'Background'].map(doc => (
+                                <div key={doc} className="flex items-center justify-between p-3 bg-white/[0.02] border border-white/5 rounded-xl group hover:border-primary/30 transition-all">
+                                    <span className="text-[10px] font-bold text-foreground/40 uppercase">{doc}</span>
+                                    {uploadedDocs.includes(doc) ? (
+                                        <CheckCircle2 className="w-3 h-3 text-primary" />
+                                    ) : (
+                                        <UploadCloud className="w-3 h-3 text-foreground/10 group-hover:text-primary transition-colors cursor-pointer" />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                </div>
+
+                {/* CENTER COLUMN: Main Feed & Applications */}
+                <div className="lg:col-span-6 space-y-8">
+                    {/* DROP ZONE / SMART INGESTOR */}
+                    <section className="glass technical-border rounded-[2.5rem] p-8 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <UploadCloud className="w-32 h-32 text-primary" />
+                        </div>
+                        <div className="relative z-10">
+                            <h2 className="text-2xl font-black tracking-tight mb-2">Smart Ingestor 2.0</h2>
+                            <p className="text-foreground/40 text-sm mb-8">Deploy your resume into our neural engine for deep-match optimization.</p>
+
+                            <div
+                                onClick={handleResumeUpload}
+                                className={`border-2 border-dashed rounded-3xl p-12 flex flex-col items-center justify-center transition-all cursor-pointer h-64
+                                ${isProcessing ? 'border-primary bg-primary/5' : 'border-white/10 hover:border-primary/40 hover:bg-white/[0.02]'}`}
+                            >
+                                {isProcessing ? (
+                                    <div className="flex flex-col items-center space-y-4">
+                                        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                                        <p className="text-xs font-mono uppercase tracking-[0.3em] text-primary animate-pulse">Scanning Neural Paths...</p>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center text-center space-y-4">
+                                        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                                            <FileUp className="w-8 h-8 text-primary" />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-lg">Drop your resume here</p>
+                                            <p className="text-[10px] font-mono text-foreground/30 uppercase tracking-widest mt-1">PDF, DOCX, OR RAW TEXT INGESTION</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* ACTIVE APPLICATIONS */}
+                    <section className="space-y-6">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                                <Layers className="w-5 h-5 text-primary" />
+                                <h2 className="font-black text-sm uppercase tracking-[0.2em]">Application Streams</h2>
+                            </div>
+                            <button className="text-[10px] font-black uppercase tracking-widest text-primary hover:text-accent transition-colors">View All</button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4">
+                            {applications.map(app => (
+                                <ApplicationTracker key={app.id} application={app} />
+                            ))}
+                        </div>
+                    </section>
+                </div>
+
+                {/* RIGHT COLUMN: Opportunities & Feed */}
+                <div className="lg:col-span-3 space-y-8">
+                    <section className="glass technical-border rounded-3xl p-6 space-y-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                                <Target className="w-5 h-5 text-primary" />
+                                <h2 className="font-black text-sm uppercase tracking-[0.1em]">Radar</h2>
+                            </div>
+                            <Bell className="w-4 h-4 text-foreground/20 hover:text-primary transition-colors cursor-pointer" />
+                        </div>
 
                         <div className="space-y-4">
-                            <textarea
-                                placeholder="Paste raw CV content here..."
-                                rows={12}
-                                className="w-full bg-secondary/30 border border-border rounded-xl p-6 text-foreground/80 font-light outline-none focus:border-primary transition-all resize-none leading-relaxed"
-                                value={cvText}
-                                onChange={(e) => setCvText(e.target.value)}
-                            />
-                            <button
-                                onClick={handleCVSync}
-                                disabled={isProcessing || !cvText}
-                                className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-4 rounded-xl flex items-center justify-center space-x-2 transition-all disabled:opacity-50"
-                            >
-                                {isProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Synchronize with AI Pool</span>}
+                            {[
+                                { title: 'Head of AI', company: 'Neuralink Corp', score: 98, type: 'Remote' },
+                                { title: 'Lead Data Scientist', company: 'Google Brain', score: 91, type: 'On-site' },
+                                { title: 'MLOps Architect', company: 'Anthropic', score: 87, type: 'Hybrid' }
+                            ].map((job, i) => (
+                                <div key={i} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl group hover:border-primary/50 transition-all cursor-pointer">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h4 className="text-xs font-bold group-hover:text-primary transition-colors line-clamp-1">{job.title}</h4>
+                                        <span className="text-[8px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">{job.score}%</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] text-foreground/30 font-mono uppercase">{job.company}</span>
+                                        <span className="text-[10px] text-foreground/20 italic">{job.type}</span>
+                                    </div>
+                                </div>
+                            ))}
+                            <button className="w-full py-4 border border-dashed border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-foreground/30 hover:border-primary/30 hover:text-primary transition-all">
+                                SCAN FOR MORE JOBS
                             </button>
                         </div>
                     </section>
 
-                    {/* STRUCTURED DATA VIEW */}
-                    {profile && (
-                        <section className="glass technical-border rounded-2xl p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <div className="flex items-center justify-between mb-8">
-                                <h2 className="text-xl font-bold">Extracted Identity</h2>
-                                <span className="text-xs font-mono text-accent">VERIFIED BY RECRUITINTEL v1.0</span>
+                    <section className="glass technical-border rounded-3xl p-6 bg-secondary/20">
+                        <div className="flex items-center space-x-3 mb-6">
+                            <BookOpen className="w-5 h-5 text-primary" />
+                            <h2 className="font-black text-sm uppercase tracking-[0.1em]">Insights</h2>
+                        </div>
+                        <div className="space-y-4">
+                            <div className="p-3 bg-primary/5 border-l-2 border-primary rounded-r-xl">
+                                <p className="text-[10px] font-bold text-primary uppercase mb-1">Growth Opportunity</p>
+                                <p className="text-xs text-foreground/60 leading-relaxed">Your profile matches 85% of high-paying Rust roles. Consider adding 'Tokio' to your skills.</p>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-4">
-                                    <label className="text-[10px] font-mono text-foreground/40 uppercase tracking-widest block">Core Professional Summary</label>
-                                    <p className="text-lg font-light leading-relaxed">{profile.summary}</p>
-                                </div>
-                                <div className="space-y-6">
-                                    <div>
-                                        <label className="text-[10px] font-mono text-foreground/40 uppercase tracking-widest block mb-2">Technical Skills</label>
-                                        <div className="flex flex-wrap gap-2">
-                                            {profile.skills.map((skill: string, i: number) => (
-                                                <span key={i} className="px-3 py-1 bg-white/5 border border-border rounded-full text-xs hover:border-primary transition-colors cursor-default">{skill}</span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
+                            <div className="p-3 bg-accent/5 border-l-2 border-accent rounded-r-xl">
+                                <p className="text-[10px] font-bold text-accent uppercase mb-1">Network Insight</p>
+                                <p className="text-xs text-foreground/60 leading-relaxed">3 recruiters from top AI labs viewed your profile in the last 24 hours.</p>
                             </div>
-                        </section>
-                    )}
+                        </div>
+                    </section>
                 </div>
 
-                {/* SIDE ACTIONS */}
-                <div className="space-y-6">
-                    <div className="glass technical-border rounded-2xl p-6 space-y-4">
-                        <h3 className="font-bold flex items-center">
-                            <FileUp className="w-4 h-4 mr-2 text-primary" />
-                            Document Vault
-                        </h3>
-                        <p className="text-xs text-foreground/40 leading-relaxed">Mandatory verification documents for high-level technical roles.</p>
-                        <div className="space-y-2">
-                            {['National ID', 'O-Level Certificate', 'Degree / Diploma'].map((doc) => {
-                                const isUploaded = uploadedDocs.includes(doc);
-                                const isUploading = uploadingDoc === doc;
-
-                                return (
-                                    <div
-                                        key={doc}
-                                        onClick={() => !isUploaded && !isUploading && triggerUpload(doc)}
-                                        className={`p-3 border rounded-xl flex items-center justify-between group transition-all ${isUploaded ? 'bg-green-50/50 border-green-200 cursor-default' : 'bg-secondary/50 border-border cursor-pointer hover:border-primary'}`}
-                                    >
-                                        <span className={`text-sm font-medium ${isUploaded ? 'text-green-600' : 'text-foreground/60 group-hover:text-foreground'}`}>
-                                            {doc}
-                                        </span>
-                                        {isUploading ? (
-                                            <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                                        ) : isUploaded ? (
-                                            <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                        ) : (
-                                            <UploadCloud className="w-4 h-4 text-foreground/20 group-hover:text-primary" />
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div className="glass technical-border rounded-2xl p-6 space-y-4 bg-gradient-to-br from-primary/5 to-transparent">
-                        <h3 className="font-bold flex items-center">
-                            <Target className="w-4 h-4 mr-2 text-primary" />
-                            Opportunity Radar
-                        </h3>
-                        <p className="text-xs text-foreground/40">Jobs matching your neural profile will appear here.</p>
-                        <div className="py-8 text-center border border-dashed border-border rounded-xl">
-                            <p className="text-xs text-foreground/20">Awaiting Profile Sync...</p>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     );

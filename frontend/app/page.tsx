@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Shield, Target, Cpu, Zap, ArrowRight, CheckCircle2, Sparkles, Binary, Shapes } from 'lucide-react';
+import { Shield, Target, Cpu, Zap, ArrowRight, CheckCircle2, Sparkles, Binary, Shapes, TrendingUp, Clock, Globe } from 'lucide-react';
 
 const LandingPage = () => {
     return (
@@ -59,27 +59,50 @@ const LandingPage = () => {
                     </button>
                 </div>
 
-                {/* Dashboard Preview Mockup */}
-                <div className="mt-20 w-full max-w-5xl aspect-video rounded-3xl border-8 border-white shadow-2xl relative overflow-hidden group bg-slate-50">
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5" />
-                    <div className="absolute top-4 left-4 right-4 h-8 flex items-center justify-start space-x-2 px-4 border-b border-slate-200">
-                        <div className="w-3 h-3 rounded-full bg-red-400/50" />
-                        <div className="w-3 h-3 rounded-full bg-yellow-400/50" />
-                        <div className="w-3 h-3 rounded-full bg-green-400/50" />
-                    </div>
-                    <div className="mt-16 px-12 text-left">
-                        <div className="h-4 w-48 bg-slate-200 rounded-full mb-10" />
-                        <div className="grid grid-cols-3 gap-6">
-                            <div className="h-32 bg-white rounded-2xl shadow-sm border border-slate-100" />
-                            <div className="h-32 bg-white rounded-2xl shadow-sm border border-slate-100" />
-                            <div className="h-32 bg-white rounded-2xl shadow-sm border border-slate-100" />
+                {/* Dashboard News & Articles Section */}
+                <div className="mt-20 w-full max-w-6xl rounded-[3rem] border-8 border-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] relative overflow-hidden group bg-white/40 backdrop-blur-md">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
+
+                    <div className="relative z-10 p-8 md:p-12 text-left">
+                        <div className="flex items-center justify-between mb-10">
+                            <div>
+                                <h3 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Market Intelligence</h3>
+                                <div className="h-1.5 w-20 bg-gradient-to-r from-primary to-accent rounded-full" />
+                            </div>
+                            <div className="hidden sm:flex space-x-2">
+                                <div className="w-3 h-3 rounded-full bg-slate-200" />
+                                <div className="w-3 h-3 rounded-full bg-slate-200" />
+                                <div className="w-3 h-3 rounded-full bg-slate-300" />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <NewsArticleCard
+                                tag="Global Economy"
+                                title="The 2026 Skill Renaissance: Navigating AI Uncertainty"
+                                excerpt="Global hiring benchmarks are shifting as neural matching replaces keyword-based filtering."
+                                date="Mar 12, 2026"
+                                imageUrl="/images/news/ai_renaissance.png"
+                                isTrending
+                            />
+                            <NewsArticleCard
+                                tag="Employment"
+                                title="The Hybrid Mandate: Why Flexibility Wins the Talent War"
+                                excerpt="New data shows 82% of top-tier engineers prioritize asynchronous autonomy over salary."
+                                date="Mar 10, 2026"
+                                imageUrl="/images/news/hybrid_work.png"
+                            />
+                            <NewsArticleCard
+                                tag="Market Analysis"
+                                title="Interest Rates vs. Engineering Growth"
+                                excerpt="How the latest economic shifts are cooling venture capital while heating up AI research spend."
+                                date="Mar 08, 2026"
+                                imageUrl="/images/news/economic_shift.png"
+                            />
                         </div>
                     </div>
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-white/40 backdrop-blur-sm">
-                        <div className="px-6 py-3 bg-white shadow-xl rounded-full font-bold text-primary flex items-center">
-                            <Sparkles className="mr-2 w-5 h-5" /> Interactive Intelligence Applied
-                        </div>
-                    </div>
+
+                    <div className="absolute inset-0 pointer-events-none border border-white/20 rounded-[2.5rem]" />
                 </div>
             </header>
 
@@ -194,6 +217,47 @@ const FeatureCard = ({ icon, color, title, description }: { icon: React.ReactNod
         <p className="text-slate-500 font-medium leading-relaxed">
             {description}
         </p>
+    </div>
+);
+
+const NewsArticleCard = ({ tag, title, excerpt, date, imageUrl, isTrending }: { tag: string, title: string, excerpt: string, date: string, imageUrl?: string, isTrending?: boolean }) => (
+    <div className="group relative bg-white border border-slate-100 rounded-[2.5rem] shadow-sm hover:shadow-2xl hover:border-primary/20 transition-all overflow-hidden cursor-pointer flex flex-col h-full">
+        {imageUrl && (
+            <div className="relative aspect-video overflow-hidden">
+                <img
+                    src={imageUrl}
+                    alt={title}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/20 to-transparent" />
+            </div>
+        )}
+        <div className="p-8 flex flex-col flex-1">
+            <div className="flex items-center justify-between mb-4">
+                <span className="text-[10px] font-black uppercase tracking-widest text-primary bg-primary/5 px-2.5 py-1 rounded-full border border-primary/10">
+                    {tag}
+                </span>
+                {isTrending && (
+                    <div className="flex items-center text-orange-500 text-[10px] font-bold uppercase tracking-wider">
+                        <TrendingUp className="w-3 h-3 mr-1" /> Trending
+                    </div>
+                )}
+            </div>
+            <h4 className="text-xl font-bold text-slate-900 leading-tight mb-3 group-hover:text-primary transition-colors line-clamp-2">
+                {title}
+            </h4>
+            <p className="text-sm text-slate-500 font-medium mb-6 line-clamp-3 leading-relaxed flex-1">
+                {excerpt}
+            </p>
+            <div className="flex items-center justify-between pt-6 border-t border-slate-50 mt-auto">
+                <div className="flex items-center text-slate-400 text-[10px] font-bold uppercase tracking-tighter">
+                    <Clock className="w-3 h-3 mr-1.5" /> {date}
+                </div>
+                <div className="text-primary opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0">
+                    <ArrowRight className="w-4 h-4" />
+                </div>
+            </div>
+        </div>
     </div>
 );
 
